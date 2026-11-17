@@ -40,6 +40,18 @@ export HOSTS_WORK="$TMP/work"
 : >"$PROC_MOUNTS"
 
 mkdir -p "$TMP/bin" "$TMP/mod/system/etc" "$TMP/target" "$TMP/work"
+
+# Falszywy mount: FUNKCJA shell (dziala nawet gdy busybox ma wlaczony
+# standalone shell i ignoruje PATH, jak Ubuntu busybox-static w CI)
+# + skrypt w PATH dla procesow potomnych.
+fake_mount() {
+	echo "$*" >>"$MOUNT_LOG"
+	case "$*" in *--bind*) [ "${FAIL_BIND:-0}" = 1 ] && return 32 ;; esac
+	[ "${FAIL_ALL:-0}" = 1 ] && return 32
+	return 0
+}
+mount() { fake_mount "$@"; }
+
 cat >"$TMP/bin/mount" <<'EOS'
 #!/bin/sh
 echo "$*" >>"$MOUNT_LOG"
@@ -57,7 +69,8 @@ export HOSTS_TARGET="$TMP/target/hosts"
 export HOSTS_SRC="$TMP/mod/system/etc/hosts"
 export PATH="$TMP/bin:$PATH"
 
-run_apply() { SH -c '. "$MODDIR/common.sh"; apply_hosts; echo "rc=$?"'; }
+# apply_hosts w podshellu: dziedziczy funkcje i zmienne, wiec fake mount dziala
+run_apply() { ( . "$MODDIR/common.sh"; apply_hosts; echo "rc=$?" ); }
 
 # ---------- 2. bind mount dziala ----------
 : >"$MOUNT_LOG"; : >"$TMP/work/apply.log"
