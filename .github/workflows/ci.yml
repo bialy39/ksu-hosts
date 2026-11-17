@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalacja busybox i zip
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq busybox-static zip unzip
+
+      - name: Testy logiki modulu (busybox ash)
+        run: busybox ash tests/run-tests.sh
+
+      - name: Budowanie zipa
+        run: sh build.sh
+
+      - name: Kontrola zawartosci zipa
+        run: |
+          set -eu
+          ZIP=$(ls dist/ksu-hosts-*.zip)
+          echo "zip: $ZIP"
+          unzip -l "$ZIP"
+          test "$(unzip -Z1 "$ZIP" | grep -c '^module\.prop$')" = 1
+          unzip -p "$ZIP" module.prop | grep -qx 'id=ksu-hosts'
+          unzip -p "$ZIP" module.prop | grep -qx 'author=deepseek-flash'
+          unzip -Z1 "$ZIP" | grep -qx 'post-fs-data.sh'
+          unzip -Z1 "$ZIP" | grep -qx 'common.sh'
+          unzip -Z1 "$ZIP" | grep -qx 'system/etc/hosts'
+          unzip -Z "$ZIP" common.sh | grep -q '^-rwx'
+          n=$(unzip -p "$ZIP" system/etc/hosts | grep -c '^0\.0\.0\.0 ')
+          echo "wpisy w liscie hosts: $n"
+          test "$n" -gt 50000
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ksu-hosts-zip
+          path: dist/ksu-hosts-*.zip

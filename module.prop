@@ -1,0 +1,6 @@
+id=ksu-hosts
+name=Systemless Hosts (KernelSU / KernelSU-Next)
+version=v1.0.0
+versionCode=1
+author=deepseek-flash
+description=Pozwala zapisywac /system/etc/hosts bez ruszania partycji system i utrzymuje zmiany po restarcie. Podstawa pod AdAway (tryb root) oraz wlasne listy blokujace.
